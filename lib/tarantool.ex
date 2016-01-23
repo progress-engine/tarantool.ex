@@ -1,0 +1,2 @@
+defmodule Tarantool do
+end
