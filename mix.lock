@@ -1,0 +1,2 @@
+%{"connection": {:hex, :connection, "1.0.2"},
+  "message_pack": {:hex, :message_pack, "0.2.0"}}
