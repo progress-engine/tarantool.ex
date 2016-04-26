@@ -4,29 +4,69 @@ defmodule Tarantool do
 	"""
 
 	use Connection
+	use Tarantool.Constants
+
 	require Logger
 
 	def start_link(host \\ 'localhost', port \\ 3301, timeout \\ 5000) do
     Connection.start_link(__MODULE__, {host, port, timeout})
   end
 
-  def send(conn, data), do: Connection.call(conn, {:send, data})
+	def auth(conn, opts) do
+		Connection.call(conn, {:auth, opts})
+	end
 
-  def recv(conn, bytes, timeout \\ 3000) do
-    Connection.call(conn, {:recv, bytes, timeout})
+	def ping(conn, opts \\ %{}) do
+		Connection.call(conn, {:ping, opts})
+	end
+
+  def select(conn, opts) do
+    Connection.call(conn, {:select, opts})
   end
 
-  def close(conn), do: Connection.call(conn, :close)
+  def insert(conn, opts) do
+    Connection.call(conn, {:insert, opts})
+  end
+
+  def replace(conn, opts) do
+    Connection.call(conn, {:replace, opts})
+  end
+
+  def update(conn, opts) do
+    Connection.call(conn, {:update, opts})
+  end
+
+  def delete(conn, opts) do
+    Connection.call(conn, {:delete, opts})
+  end
+
+  def call(conn, opts) do
+    Connection.call(conn, {:call, opts})
+  end
+
+  def eval(conn, opts) do
+    Connection.call(conn, {:eval, opts})
+  end
+
+  def upsert(conn, opts) do
+    Connection.call(conn, {:upsert, opts})
+  end
+
+  def close(conn) do
+		 Connection.call(conn, :close)
+	end
 
   def init({host, port, timeout}) do
-    s = %{host: host, port: port, timeout: timeout, sock: nil}
+    s = %{host: host, port: port, timeout: timeout, sock: nil, salt: nil, sync: 0, queue: %{}}
     {:connect, :init, s}
   end
 
   def connect(_, %{sock: nil, host: host, port: port, timeout: timeout} = s) do
-    case :gen_tcp.connect(host, port, [active: false, packet: :line], timeout) do
+    case :gen_tcp.connect(host, port, [active: false, packet: :raw, mode: :binary], timeout) do
       {:ok, sock} ->
-        {:ok, %{s | sock: sock}}
+				{:ok, _greeting, salt} = read_greeting(sock)
+				:ok = :inet.setopts(sock, active: :once)
+        {:ok, %{s | sock: sock, salt: salt}}
       {:error, _} ->
         {:backoff, 1000, s}
     end
@@ -46,32 +86,96 @@ defmodule Tarantool do
     {:connect, :reconnect, %{s | sock: nil}}
   end
 
+	# Callbacks
+
   def handle_call(_, _, %{sock: nil} = s) do
     {:reply, {:error, :closed}, s}
   end
-	
-  def handle_call({:send, data}, _, %{sock: sock} = s) do
-    case :gen_tcp.send(sock, data) do
-      :ok ->
-        {:reply, :ok, s}
-      {:error, _} = error ->
-        {:disconnect, error, error, s}
-    end
-  end
 
-  def handle_call({:recv, bytes, timeout}, _, %{sock: sock} = s) do
-    case :gen_tcp.recv(sock, bytes, timeout) do
-      {:ok, _} = ok ->
-        {:reply, ok, s}
-      {:error, :timeout} = timeout ->
-        {:reply, timeout, s}
-      {:error, _} = error ->
-        {:disconnect, error, error, s}
-    end
+	def handle_call({code, opts}, from, %{sock: sock} = s) do
+		make_payload(code, opts, s)
+		|> send_request(sock)
+
+    {:noreply, %{s | sync: s.sync + 1, queue: Map.put(s.queue, s.sync, from)}}
   end
 
   def handle_call(:close, from, s) do
     {:disconnect, {:close, from}, s}
   end
 
+	@doc false
+	def handle_info({:tcp, _, packet_data}, %{sock: socket} = s) do
+		{:ok, {packet_length, data}} = MessagePack.unpack_once(packet_data)
+		{:ok, {header, body}} = MessagePack.unpack_once(data)
+		{:ok, {body, _rest}} = MessagePack.unpack_once(body)
+
+		sync = header[@iproto_keys[:sync]]
+
+		GenServer.reply(s.queue[sync], {:ok, header, body})
+
+		:inet.setopts(socket, active: :once)
+		{:noreply, %{s | queue: Map.delete(s.queue, sync)}}
+	end
+
+	defp make_payload(:auth, %{username: username, password: password}, %{salt: salt} = s) do
+		make_payload(:auth, %{username: username, tuple: ["chap-sha1", scramble(salt, password)]}, s)
+	end
+
+	defp make_payload(code, opts, s) do
+		payload = pack_header(code, s) <> pack_body(opts)
+		payload_size(payload) <> payload
+	end
+
+	defp pack_header(code, s) do
+		%{@iproto_keys[:request_type] => @iproto_codes[code],
+      @iproto_keys[:sync] => s.sync}
+		|> MessagePack.pack!
+	end
+
+	defp send_request(request, sock) do
+		:gen_tcp.send(sock, request)
+	end
+
+	defp read_greeting(conn) do
+    {:ok, response } = :gen_tcp.recv(conn, 128)
+
+    << greeting::512, salt::352, _rest :: binary >> = response
+
+    {:ok, <<greeting::512>>, <<salt::352>>}
+  end
+
+  defp pack_body(body) do
+    pack_body(Map.keys(body), body, %{}) |> MessagePack.pack!
+  end
+
+  defp pack_body([], _body, acc) do
+    acc
+  end
+
+  defp pack_body([key| rest], body, acc) do
+    acc = case body[key] do
+      nil -> acc
+      _ -> Map.merge(acc, %{@iproto_keys[key] => body[key]})
+    end
+    pack_body(rest, body, acc)
+  end
+
+	defp payload_size(payload) do
+		<< 0xCE :: 8, byte_size(payload) :: 32-big-unsigned-integer-unit(1) >>
+	end
+
+	defp scramble(encoded_salt, password) do
+		<<salt :: 160, _ :: binary>> = :base64.decode(encoded_salt)
+		step1 = :crypto.hash(:sha, password)
+		step2 = :crypto.hash(:sha, step1)
+		step3 = :crypto.hash(:sha, [<<salt :: 160>>, step2])
+		:crypto.exor(step3, step1)
+	end
+
+	defp add_param(map, param_name, value) do
+		case value do
+			nil -> map
+			_ -> Map.merge(map, %{@iproto_keys[param_name] => value})
+		end
+	end
 end
