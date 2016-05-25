@@ -42,7 +42,7 @@ defmodule Tarantool.Mixfile do
   defp package do
     [# These are the default files included in the package
      files: ["lib", "priv", "mix.exs", "README*", "readme*", "LICENSE*", "license*"],
-     maintainers: ["Alexey Poimtsev"],
+     maintainers: ["Alexey Poimtsev", "Alexander Malaev"],
      licenses: ["MIT"],
      links: %{"GitHub" => "https://github.com/progress-engine/tarantool.ex"}]
   end
