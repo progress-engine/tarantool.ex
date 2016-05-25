@@ -14,7 +14,7 @@ defmodule Tarantool.Helper do
 
         cond do
           MapSet.size(missing) > 0 -> {:error, missing_params: MapSet.to_list(missing)}
-          MapSet.size(wrong) > 0 -> {:error, {:error, wrong_params: MapSet.to_list(wrong)}}
+          MapSet.size(wrong) > 0 -> {:error, wrong_params: MapSet.to_list(wrong)}
           True -> :ok
         end
       end
