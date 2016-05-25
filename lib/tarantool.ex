@@ -1,3 +1,40 @@
+defmodule Tarantool.Helper do
+  defmacro __using__(_opts) do
+    quote do
+      import Tarantool.Helper
+
+      def check_params(provided, required, optional) do
+        provided = MapSet.new(Map.keys(provided))
+        required = MapSet.new(required)
+        optional = MapSet.new(optional)
+        possible = MapSet.union(required, optional)
+
+        missing = MapSet.difference(required, provided)
+          wrong = MapSet.difference(provided, possible)
+
+        cond do
+          MapSet.size(missing) > 0 -> {:error, missing_params: MapSet.to_list(missing)}
+          MapSet.size(wrong) > 0 -> {:error, {:error, wrong_params: MapSet.to_list(wrong)}}
+          True -> :ok
+        end
+      end
+    end
+  end
+
+  defmacro defrequest(request, required \\ [], optional \\ []) do
+    quote do
+      def unquote(request)(conn, params \\ %{}) do
+        case check_params(params, unquote(required), unquote(optional)) do
+          :ok ->
+            GenServer.call(conn, {unquote(request), params})
+          error ->
+            error
+        end
+      end
+    end
+  end
+end
+
 defmodule Tarantool do
   @moduledoc """
   Tarantool client for Elixir
@@ -5,51 +42,23 @@ defmodule Tarantool do
 
   use Connection
   use Tarantool.Constants
+  use Tarantool.Helper
 
   require Logger
 
+  defrequest :ping
+  defrequest :auth, [:username, :password]
+  defrequest :select, [:space_id, :limit, :key, :index_id, :offset, :iterator]
+  defrequest :insert, [:space_id, :tuple ]
+  defrequest :replace, [:space_id, :tuple]
+  defrequest :update, [:space_id, :index_id, :key, :tuple]
+  defrequest :delete, [:space_id, :index_id, :key]
+  defrequest :call, [:function_name, :tuple]
+  defrequest :eval, [:expr, :tuple]
+  defrequest :upsert, [:space_id, :tuple, :ops]
+
   def start_link(host \\ 'localhost', port \\ 3301, timeout \\ 5000) do
     Connection.start_link(__MODULE__, {host, port, timeout})
-  end
-
-  def auth(conn, opts) do
-    Connection.call(conn, {:auth, opts})
-  end
-
-  def ping(conn, opts \\ %{}) do
-    Connection.call(conn, {:ping, opts})
-  end
-
-  def select(conn, opts) do
-    Connection.call(conn, {:select, opts})
-  end
-
-  def insert(conn, opts) do
-    Connection.call(conn, {:insert, opts})
-  end
-
-  def replace(conn, opts) do
-    Connection.call(conn, {:replace, opts})
-  end
-
-  def update(conn, opts) do
-    Connection.call(conn, {:update, opts})
-  end
-
-  def delete(conn, opts) do
-    Connection.call(conn, {:delete, opts})
-  end
-
-  def call(conn, opts) do
-    Connection.call(conn, {:call, opts})
-  end
-
-  def eval(conn, opts) do
-    Connection.call(conn, {:eval, opts})
-  end
-
-  def upsert(conn, opts) do
-    Connection.call(conn, {:upsert, opts})
   end
 
   def close(conn) do
@@ -137,7 +146,7 @@ defmodule Tarantool do
     sync = header[@iproto_keys[:sync]]
     GenServer.reply(s.queue[sync], {:ok, header, body})
 
-    %{s| tail: rest, response_size: nil, queue: Map.delete(s.queue, sync)}
+    parse_data(rest, %{s| response_size: nil, queue: Map.delete(s.queue, sync)})
   end
 
   defp make_payload(:auth, %{username: username, password: password}, %{salt: salt} = s) do
