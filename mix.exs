@@ -3,7 +3,7 @@ defmodule Tarantool.Mixfile do
 
   def project do
     [app: :tarantool,
-     version: "0.0.1",
+     version: "0.0.2",
      elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -29,9 +29,8 @@ defmodule Tarantool.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [
-    {:message_pack, "~> 0.2.0"},
-    {:connection, "~> 1.0"}]
+    [{:message_pack, "~> 0.2.0"},
+     {:connection, "~> 1.0"}]
   end
 
   defp description do
@@ -43,7 +42,7 @@ defmodule Tarantool.Mixfile do
   defp package do
     [# These are the default files included in the package
      files: ["lib", "priv", "mix.exs", "README*", "readme*", "LICENSE*", "license*"],
-     maintainers: ["Alexey Poimtsev"],
+     maintainers: ["Alexey Poimtsev", "Alexander Malaev"],
      licenses: ["MIT"],
      links: %{"GitHub" => "https://github.com/progress-engine/tarantool.ex"}]
   end

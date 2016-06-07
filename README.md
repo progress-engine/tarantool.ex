@@ -9,7 +9,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
   1. Add tarantool to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:tarantool, "~> 0.0.1"}]
+          [{:tarantool, "~> 0.0.2"}]
         end
 
   2. Ensure tarantool is started before your application:
@@ -17,4 +17,8 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
         def application do
           [applications: [:tarantool]]
         end
+
+## Example Usage
+
+
 
