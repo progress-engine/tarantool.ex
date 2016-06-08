@@ -24,8 +24,13 @@ defmodule Tarantool.Response do
     {:ok, {body, rest}} = MessagePack.unpack_once(body)
 
     sync = header[@iproto_keys[:sync]]
-    GenServer.reply(s.queue[sync], {:ok, header, body})
+    GenServer.reply(s.queue[sync], make_response(header, body))
 
     parse_data(rest, %{s| response_size: nil, queue: Map.delete(s.queue, sync)})
   end
+
+
+  def make_response(%{0 => 0}, %{0x30 => data}), do: {:ok, data}
+  def make_response(%{0 => 0}, %{} = data), do: {:ok, data}
+  def make_response(%{0 => error_code}, %{0x31 => error_message}), do: {:error, error_code, error_message}
 end
