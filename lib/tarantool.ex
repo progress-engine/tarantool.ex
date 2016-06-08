@@ -11,9 +11,9 @@ defmodule Tarantool do
 
   require Logger
 
-  def start_link(host \\ 'localhost', port \\ 3301, timeout \\ 5000) do
-    Connection.start_link(__MODULE__, {host, port, timeout})
-  end
+  def start_link(host \\ 'localhost', port \\ 3301, timeout \\ 5000)
+  def start_link(host, port, timeout) when is_binary(host), do: start_link(to_char_list(host), port, timeout)
+  def start_link(host, port, timeout), do: Connection.start_link(__MODULE__, {host, port, timeout})
 
   def close(conn) do
      Connection.call(conn, :close)
