@@ -94,7 +94,11 @@ iex(4)> Tarantool.Api.select(t, %{space_id: 280, limit: 100, key: [], index_id: 
 
 iex(5)> Tarantool.Api.ping(t)
 {:ok, %{}}
+
+# INSERT
+iex(6)> Tarantool.Api.insert(t, %{space_id: 513, tuple: [1, "hello", 100]})
+{:ok, [[1, "hello", 100]]}
+# UPDATE: update the field with index 2 using a plus operation
+iex(7)> Tarantool.Api.update(t, %{space_id: 513,  index_id: nil, key: [1], tuple: [["+", 2, 101]] })
+{:ok, [[1, "hello", 201]]}
 ```
-
-
-
