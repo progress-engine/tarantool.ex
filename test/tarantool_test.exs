@@ -9,7 +9,6 @@ defmodule TarantoolTest do
       [{:cd, "test"}, :binary, :use_stdio, :stderr_to_stdout]
     )
     proc = Port.info(server)[:os_pid]
-    IO.puts "server: #{proc}"
     server |> wait_for_output(~r[ready to accept requests])
     on_exit fn ->
       System.cmd("kill",["#{proc}"])
