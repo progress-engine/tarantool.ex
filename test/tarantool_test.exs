@@ -75,4 +75,9 @@ defmodule TarantoolTest do
   test "should call function", %{t: t} do
     assert {:ok, [["ok", "test param"]] } = Tarantool.Api.call(t, %{function_name: "test_func_1", tuple: ["test param"]})
   end
+
+  test "should call function with long data", %{t: t} do
+    assert {:ok, _} = Tarantool.Api.call(t, %{function_name: "test_func_2", tuple: ["00000000000000000"]})
+    assert {:ok, _} = Tarantool.Api.call(t, %{function_name: "test_func_2", tuple: ["00000000000000000000000000000000000"]})
+  end
 end
