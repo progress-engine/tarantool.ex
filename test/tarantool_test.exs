@@ -72,4 +72,7 @@ defmodule TarantoolTest do
       index_id: nil, iterator: nil, offset: 0})
   end
 
+  test "should call function", %{t: t} do
+    assert {:ok, [["ok", "test param"]] } = Tarantool.Api.call(t, %{function_name: "test_func_1", tuple: ["test param"]})
+  end
 end

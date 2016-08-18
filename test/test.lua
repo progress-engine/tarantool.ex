@@ -1,6 +1,10 @@
 box.cfg({listen=3303})
 box.schema.user.create('test', {password='t3st', if_not_exists=true})
 
+function test_func_1(p1)
+  return {'ok', p1}
+end
+
 if not box.space.test then
     local s1 = box.schema.space.create('test', {id = 513, if_not_exists = true})
     local ip = s1:create_index('primary', {type = 'hash', parts = {1, 'NUM'}, if_not_exists = true})
