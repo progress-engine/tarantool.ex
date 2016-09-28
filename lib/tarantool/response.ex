@@ -1,9 +1,11 @@
 defmodule Tarantool.Response do
   use Tarantool.Constants
 
+  require Logger
+
   def parse_data(data, %{response_size: nil} = s) do
-    case MessagePack.unpack_once(data) do
-      {:ok, {response_size, rest}} ->
+    case Msgpax.unpack_slice(data) do
+      {:ok, response_size, rest} ->
         parse_data(rest, %{s | response_size: response_size})
       {:error, _} ->
         %{s| tail: data}
@@ -20,8 +22,8 @@ defmodule Tarantool.Response do
   end
 
   def parse_response(data, s) do
-    {:ok, {header, body}} = MessagePack.unpack_once(data)
-    {:ok, {body, rest}} = MessagePack.unpack_once(body)
+    {:ok, header, body} = Msgpax.unpack_slice(data)
+    {:ok, body, rest} = Msgpax.unpack_slice(body)
 
     sync = header[@iproto_keys[:sync]]
     GenServer.reply(s.queue[sync], make_response(header, body))
