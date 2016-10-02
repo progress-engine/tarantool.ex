@@ -14,11 +14,11 @@ defmodule Tarantool.Request do
   defp pack_header(code, s) do
     %{@iproto_keys[:request_type] => @iproto_codes[code],
       @iproto_keys[:sync] => s.sync}
-    |> MessagePack.pack!
+    |> Msgpax.pack! |> IO.iodata_to_binary()
   end
 
   defp pack_body(body) do
-    pack_body(Map.keys(body), body, %{}) |> MessagePack.pack!
+    pack_body(Map.keys(body), body, %{}) |> Msgpax.pack! |> IO.iodata_to_binary()
   end
 
   defp pack_body([], _body, acc) do
