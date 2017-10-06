@@ -1,3 +1,2 @@
-%{"connection": {:hex, :connection, "1.0.2", "f4a06dd3ecae4141aa66f94ce92ea4c4b8753069472814932f1cadbc3078ab80", [:mix], []},
-  "message_pack": {:hex, :message_pack, "0.2.0", "244350d139b96c94729666dfac24440c3b1e8b3d1cc67287e78b2b6779593020", [:mix], []},
-  "msgpax": {:hex, :msgpax, "1.0.0", "8135ba90c5560de753b63f7af1cf019a695d3e959ea564ea733634c95eaa037a", [:mix], [{:plug, "~> 1.0", [hex: :plug, optional: true]}]}}
+%{"connection": {:hex, :connection, "1.0.4", "a1cae72211f0eef17705aaededacac3eb30e6625b04a6117c1b2db6ace7d5976", [:mix], [], "hexpm"},
+  "msgpax": {:hex, :msgpax, "1.1.0", "e31625e256db2decca1ae2b841f21b4d2483b1332649ce3ebc96c7ff7a4986e3", [], [{:plug, "~> 1.0", [hex: :plug, repo: "hexpm", optional: true]}], "hexpm"}}
