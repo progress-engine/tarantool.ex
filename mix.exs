@@ -29,7 +29,7 @@ defmodule Tarantool.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:msgpax, "~> 1.0"},
+    [{:msgpax, "~> 1.0 or ~> 2.0"},
      {:connection, "~> 1.0"}]
   end
 
